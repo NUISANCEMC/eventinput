@@ -15,8 +15,10 @@ struct Table {
 
   Table()
       : blueprint{}, clear{}, select{}, weight{}, projections{}, project{},
-        finalize{}, likeihood{} {}
+        finalize{}, likelihood{} {}
 
+  YAML::Node metadata;
+    
   // Here we purposefully keep a full template so that people can change the
   // binning/data on the fly and all others get propagated.
 
@@ -33,7 +35,7 @@ struct Table {
   FullProjectFunc project;
 
   FinalizeFunc finalize;
-  LikelihoodFunc likeihood;
+  LikelihoodFunc likelihood;
 
   // I also want the ability to do table.add_column for direct blueprint
   // updates.

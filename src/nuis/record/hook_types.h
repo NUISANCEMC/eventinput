@@ -21,7 +21,7 @@ using WeightFunc = std::function<double(HepMC3::GenEvent const &)>;
 using SelectFunc = std::function<int(HepMC3::GenEvent const &)>;
 
 using FinalizeFunc =
-    std::function<Comparison::Finalised(Comparison const &, const double)>;
+    std::function<BinnedValues(Comparison &, const double)>;
 
 using LikelihoodFunc = std::function<double(Comparison const &)>;
 } // namespace nuis

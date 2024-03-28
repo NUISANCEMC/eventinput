@@ -12,9 +12,9 @@ add_executable(nuis-example-frame nuis-example-frame.cxx)
 target_link_libraries(nuis-example-frame eventinput eventframe)
 install(TARGETS nuis-example-frame DESTINATION bin)
 
-add_executable(nuis-to-NuHepMC nuis-to-NuHepMC.cxx)
-target_link_libraries(nuis-to-NuHepMC eventinput)
-install(TARGETS nuis-to-NuHepMC DESTINATION bin)
+#add_executable(nuis-to-NuHepMC nuis-to-NuHepMC.cxx)
+#target_link_libraries(nuis-to-NuHepMC eventinput)
+#install(TARGETS nuis-to-NuHepMC DESTINATION bin)
 
 
 if(NUIS_ARROW_ENABLED)

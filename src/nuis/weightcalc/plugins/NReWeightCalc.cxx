@@ -23,7 +23,9 @@ namespace nuis {
   };
 
   void NReWeightCalc::set_parameters(std::map<std::string, double> const &params) {
+    std::cout << "SETTING PARAMS" << std::endl;
     for (auto &[p, v] : params) {
+      std::cout << "SET " << p << " " << v << std::endl;
       fNEUTRW->SetDial_To_Value(fNEUTRW->DialFromString(p), v);
     }
     fNEUTRW->Reconfigure();
@@ -37,9 +39,23 @@ namespace nuis {
                    "neutvectEventSource.");
       return;
     }
+    log_info("Initializing from card");
+    log_info(cfg["neut_cardname"].as<std::string>());
+std::cout << "LLOADING" << std::endl;
     neut::CommonBlockIFace::Initialize(cfg["neut_cardname"].as<std::string>(),
                                        false);
+    log_info("Making RW Instance");
+
+std::cout << "DONE LLOADING" << std::endl;
+
     fNEUTRW = neut::rew::MakeNReWeightInstance();
+std::cout << "MADE RW" << std::endl;
+
+    log_info("Finished");
+
+std::cout << "DONE" << std::endl;
+
+
   };
 
  

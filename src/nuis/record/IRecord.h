@@ -12,21 +12,22 @@
 #include "nuis/log.h"
 
 namespace nuis {
-
 using TablePtr = std::shared_ptr<Table>;
-
 struct IRecord : public nuis_named_log("Record") {
+  IRecord() {}
 
-  IRecord(){};
+  IRecord(YAML::Node /*n*/) {}
 
-  IRecord(YAML::Node /*n*/) {
-    std::cout << "Base constructor being called" << std::endl;
-  };
+  virtual TablePtr table(std::string const &name) {
+    YAML::Node cfg = node;
+    cfg["table"] = name;
+    return table(cfg);
+  }
 
-  virtual TablePtr table(std::string const &name) = 0;
+  virtual TablePtr table(YAML::Node const &cfg) = 0;
 
   TablePtr operator[](std::string const &name) { return table(name); }
 
   YAML::Node node;
 };
-} // namespace nuis
+}  // namespace nuis

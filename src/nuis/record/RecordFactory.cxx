@@ -51,4 +51,9 @@ IRecordPtr RecordFactory::make(YAML::Node cfg) {
   return nullptr;
 }
 
+TablePtr RecordFactory::make_table(YAML::Node cfg){
+  auto record = make(cfg);
+  return record->table(cfg);
+}
+
 } // namespace nuis

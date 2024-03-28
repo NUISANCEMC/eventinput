@@ -183,6 +183,17 @@ struct Variables {
           xvalues[i]["high"] ? xvalues[i]["high"].as<double>() : -999;
     }
 
+    // Assume sqrt data if no errors, checking flag
+    if (rhs.qualifiers.find("errors") != rhs.qualifiers.end()) {
+      if (rhs.qualifiers["errors"] == "sumw") {
+        for (size_t i = 0; i < xvalues.size(); i++) {
+          if (rhs.values[i] > 0 && rhs.errors[i] == -999) {
+            rhs.values[i] = sqrt(rhs.values[i]);
+          }
+        }
+      }
+    }
+
     rhs.valid = 1;
   }
 };

@@ -1,5 +1,5 @@
 from ._pyNUISANCE import EventFrameGen, EventFrame
-from ._pyNUISANCE import HistFrame
+from ._pyNUISANCE import HistFrame, BinnedValues
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,7 +26,7 @@ class EventFrameGen_mpl_helper():
         obj = plt.hist2d( df[x], df[y], self.df[weights], *args, **kwargs )
         return obj
 
-class Frame_mpl_helper():
+class EventFrame_mpl_helper():
     def __init__(self, df):
         self.df = df
 
@@ -67,10 +67,13 @@ class HistFrame_matplotlib_helper:
     
     def  c(self, col=None): 
         if not col: col = self.fc()
-        return self.hf[col]["count"]
+        if "count" in self.hf[col]: return self.hf[col]["count"]
+        if "value" in self.hf[col]: return self.hf[col]["value"]
+
     def ec(self, col=None): 
         if not col: col = self.fc()
-        return np.sqrt(self.hf[col]["variance"])
+        if "variance" in self.hf[col]: return np.sqrt(self.hf[col]["variance"])
+        if "error" in self.hf[col]: return self.hf[col]["error"]
 
     def form_title(self, col, **kwargs):
         if "label" not in kwargs:
@@ -195,10 +198,10 @@ class HistFrame_matplotlib_helper:
                 
         plt.pcolormesh(X, Y, C)
 
-def mpl_cern_template():
+def mpl_cern_template(page_dim=[3,3]):
     plt.minorticks_on()
     plt.rcParams.update({
-        'figure.figsize': [5, 4],
+        'figure.figsize': page_dim,
         'xtick.direction': 'in',
         'ytick.direction': 'in',
         'xtick.top': True,
@@ -235,12 +238,17 @@ def build_HistFrame_matplotlib_helper(self):
 def build_EventFrameGen_mpl_helper(self):
     return EventFrameGen_mpl_helper(self)
 
-def build_Frame_mpl_helper(self):
-    return Frame_mpl_helper(self)
+def build_EventFrame_mpl_helper(self):
+    return EventFrame_mpl_helper(self)
 
 EventFrameGen.mpl = build_EventFrameGen_mpl_helper
 HistFrame.mpl = build_HistFrame_matplotlib_helper
+<<<<<<< HEAD
+BinnedValues.mpl = build_HistFrame_matplotlib_helper
+EventFrame.mpl = build_EventFrame_mpl_helper
+=======
 EventFrame.mpl = build_Frame_mpl_helper
+>>>>>>> origin/main
 
 HistFrame.show = plt.show
 

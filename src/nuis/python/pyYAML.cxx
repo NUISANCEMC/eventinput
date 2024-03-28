@@ -101,14 +101,28 @@ bool type_caster<YAML::Node>::load(handle src, bool) {
   return 1;
 }
 
-handle type_caster<YAML::Node>::cast(YAML::Node /*src*/,
+handle type_caster<YAML::Node>::cast(YAML::Node src,
                                      return_value_policy /* policy */,
-                                     handle /* parent */) {
+                                     handle /*parent*/) {
 
-  // std::cout << "Cannot convert YAML to python yet! "
-  //           << " See pyNUISANCE!" << std::endl;
+            std::stringstream ss;
+            ss << src << std::endl;
 
-  return PyLong_FromLong(0.0);
-}
+            // Importing yaml module
+            object yaml_module = module_::import("yaml");
+
+            // Getting the safe_load function
+            object safe_load = yaml_module.attr("safe_load");
+
+            // Invoking safe_load function with YAML content
+            object result = safe_load(ss.str().c_str());
+
+            // Check if the result is valid
+            if (result.is_none()) {
+              return none();
+            }
+            return result.release();
+        }
+
 } // namespace detail
 } // namespace PYBIND11_NAMESPACE

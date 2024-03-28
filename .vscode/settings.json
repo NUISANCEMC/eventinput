@@ -87,6 +87,9 @@
         "unordered_set": "cpp",
         "valarray": "cpp",
         "format": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "strstream": "cpp",
+        "span": "cpp",
+        "__memory": "cpp"
     }
 }

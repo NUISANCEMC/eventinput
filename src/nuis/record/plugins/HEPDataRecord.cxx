@@ -85,6 +85,28 @@ NEW_NUISANCE_EXCEPT(ProSelectaLoadFileFailure);
 NEW_NUISANCE_EXCEPT(ProSelectaGetFilterFailure);
 NEW_NUISANCE_EXCEPT(ProSelectaGetProjectionFailure);
 
+
+std::string database() {
+  // Require ProSelectra input
+  auto PROSELECTA = std::getenv("PROSELECTA_DIR");
+  (void)PROSELECTA;
+  if (!PROSELECTA) {
+    log_critical("PROSELECTA_DIR environment variable not defined");
+    throw; // PROSELECTA_DIRUndefined();
+  }
+  ProSelecta::Get().AddIncludePath(PROSELECTA);
+
+  // Require Database Valid
+  auto DATABASE = std::getenv("NUISANCEDB");
+  (void)DATABASE;
+  if (!DATABASE) {
+    log_critical("NUISANCE_DB environment variable not defined");
+    throw; // NUISANCEDBUndefined();
+  }
+
+  return std::string(DATABASE);
+}
+
 class HEPDataRecord : public IRecordPlugin {
 public:
   std::string db_path;
@@ -93,20 +115,20 @@ public:
     YAML::Node sc = YAML::Load("{}");
     sc["type"] = "hepdata";
     sc["release"] = "release_name";
-    sc["table"] = "table_name";
     return sc;
   }
 
-  HEPDataRecord(YAML::Node const &cfg) { node = cfg; }
+  HEPDataRecord(YAML::Node const &cfg) {
+    auto sc = schema();
+    // nuis::validate_yaml_map("HEPDATARecord", sc, cfg);
+    node = cfg;
+  }
 
-  TablePtr table(std::string const &table) {
-    YAML::Node cfg = node;
+  TablePtr table(YAML::Node const &cfg_in) {
+
+    YAML::Node cfg = cfg_in;
 
     db_path = nuis::database();
-
-    auto sc = schema();
-    nuis::validate_yaml_map("HEPDATARecord", sc, cfg);
-
     std::string release = cfg["release"].as<std::string>();
 
     std::string path_release = db_path + "/neutrino_data/" + release;
@@ -128,27 +150,27 @@ public:
     std::vector<YAML::Node> yaml_docs = YAML::LoadAllFromFile(submission_file);
 
     std::string table_file;
-    for (auto const &node : yaml_docs) {
-      if (!node["name"])
+    for (auto const &cfg_doc : yaml_docs) {
+      if (!cfg_doc["name"])
         continue;
-      if (!node["data_file"])
+      if (!cfg_doc["data_file"])
         continue;
 
-      if (node["name"].as<std::string>() == table) {
-        table_file = node["data_file"].as<std::string>();
+      if (cfg_doc["name"].as<std::string>() == cfg["table"].as<std::string>()) {
+        table_file = cfg_doc["data_file"].as<std::string>();
       }
     }
 
     if (table_file.empty()) {
-      log_critical("[ERROR]: HepData Table not found : {} {}", table,
+      log_critical("[ERROR]: HepData Table not found : {} {}", cfg["table"].as<std::string>(),
                    table_file);
       log_critical("[ERROR]: - [ Available Tables ]");
-      for (auto const &node : yaml_docs) {
-        if (!node["name"])
+      for (auto const &cfg_doc : yaml_docs) {
+        if (!cfg["name"])
           continue;
-        if (!node["date_file"])
+        if (!cfg["date_file"])
           continue;
-        log_critical("[ERROR]:  - {}", node["name"].as<std::string>());
+        log_critical("[ERROR]:  - {}", cfg_doc["name"].as<std::string>());
       }
       throw InvalidTableForRecord();
     }
@@ -229,18 +251,62 @@ public:
     };
 
     tab.weight = nuis::weight::DefaultWeight;
-    tab.finalize = nuis::finalize::EventRateScaleToData;
-    tab.likeihood = nuis::likelihood::Chi2;
+
+    if (variables_dep[0].qualifiers["scaling"] == "EventRateScaleToData") {
+      tab.finalize = nuis::finalize::EventRateScaleToData;
+
+    } else if (variables_dep[0].qualifiers["scaling"] == "FATXNormalizedByBinWidth") {
+      tab.finalize = nuis::finalize::FATXNormalizedByBinWidth;
+
+    } else if (variables_dep[0].qualifiers["scaling"] == "FATXNormalized") {
+      tab.finalize = nuis::finalize::FATXNormalized;
+
+    } else if (variables_dep[0].qualifiers["scaling"] == "FluxUnfolded") {
+      std::vector<double> bin_edges;  // placeholder - need a flux hist;
+      std::vector<double> bin_content;  // placeholder - need a flux hist;
+      tab.finalize = [bin_edges, bin_content](Comparison &fr, double fatx) {
+        return nuis::finalize::FluxUnfoldedScaling(fr,
+          fatx, bin_edges, bin_content);
+      };
+
+    } else {
+      std::cout << "FAILED TO FIND VALID FLUX DEF" << std::endl;
+      throw;
+    }
+
+    if (variables_dep[0].qualifiers["likelihood"] == "Poisson") {
+      tab.likelihood = nuis::likelihood::Poisson;
+    } else if (variables_dep[0].qualifiers["likelihood"] == "SimpleResidual") {
+      tab.likelihood = nuis::likelihood::SimpleResidual;
+    } else if (variables_dep[0].qualifiers["likelihood"] == "Chi2") {
+      tab.likelihood = nuis::likelihood::Chi2;
+    } else {
+      std::cout << "FAILED TO FIND Likleihood FLUX DEF" << std::endl;
+      throw;
+    }
 
     Comparison hist(from_hepdata_extents(variables_indep));
-
+    
     hist.data.values.col(0) = Eigen::Map<Eigen::VectorXd>(
         variables_dep[0].values.data(), variables_dep[0].values.size());
 
+    if (variables_dep[0].qualifiers.find("errors") != variables_dep[0].qualifiers.end()) {
+      if (variables_dep[0].qualifiers["errors"] == "sumw") {
+        for (size_t i = 0; i < variables_dep[0].values.size(); i++) {
+          if (variables_dep[0].values[i] > 0 && variables_dep[0].errors[i] == -999) {
+            variables_dep[0].errors[i] = sqrt(variables_dep[0].values[i]);
+          }
+        }
+      }
+    }
+    
     hist.data.errors.col(0) = Eigen::Map<Eigen::VectorXd>(
         variables_dep[0].errors.data(), variables_dep[0].errors.size());
 
+    cfg["id"]= cfg["release"].as<std::string>()+ ":" + cfg["table"].as<std::string>();
     tab.blueprint = std::make_shared<Comparison>(hist);
+    tab.metadata = cfg; // Don't love having two copies but we need access at all levels.
+    tab.blueprint->metadata = cfg; // maybe the blueprint doesn't need it?
 
     return std::make_shared<Table>(tab);
   }
